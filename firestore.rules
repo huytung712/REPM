@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helpers
+    function isAuthenticated() {
+      return true;
+    }
+    function isAdmin() {
+      return true;
+    }
+    function isManager() {
+      return true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /projects/{projectId} {
+      allow read, write: if true;
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if true;
+    }
+
+    match /documents/{documentId} {
+      allow read, write: if true;
+    }
+  }
+}
+

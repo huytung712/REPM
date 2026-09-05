@@ -1,0 +1,83 @@
+{
+  "models": {
+    "User": {
+      "collection": "users",
+      "fields": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "description": "admin, manager, or viewer" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+    "Project": {
+      "collection": "projects",
+      "fields": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "progress": { "type": "number", "description": "0-100" },
+        "startDate": { "type": "timestamp" },
+        "endDate": { "type": "timestamp" },
+        "managerId": { "type": "string", "description": "User UID of manager" },
+        "kpi_budget": { "type": "number" },
+        "kpi_spent": { "type": "number" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "Task": {
+      "collection": "tasks",
+      "fields": {
+        "projectId": { "type": "string", "description": "Reference to projects collection" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "dueDate": { "type": "timestamp" },
+        "assigneeId": { "type": "string", "description": "User UID of assignee" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "Document": {
+      "collection": "documents",
+      "fields": {
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "uploadedBy": { "type": "string" },
+        "uploadedAt": { "type": "timestamp" }
+      }
+    }
+  },
+  "rules": {
+    "users": {
+      "read": "isAuthenticated()",
+      "create": "isAuthenticated() && request.auth.uid == documentId",
+      "update": "isAdmin() || request.auth.uid == documentId",
+      "delete": "isAdmin()"
+    },
+    "projects": {
+      "read": "isAuthenticated()",
+      "create": "isAdmin() || isManager()",
+      "update": "isAdmin() || request.auth.uid == resource.data.managerId",
+      "delete": "isAdmin()"
+    },
+    "tasks": {
+      "read": "isAuthenticated()",
+      "create": "isAdmin() || isManager()",
+      "update": "isAuthenticated()",
+      "delete": "isAdmin() || isManager()"
+    },
+    "documents": {
+      "read": "isAuthenticated()",
+      "create": "isAuthenticated()",
+      "update": "isAdmin() || request.auth.uid == resource.data.uploadedBy",
+      "delete": "isAdmin() || request.auth.uid == resource.data.uploadedBy"
+    }
+  },
+  "helpers": {
+    "isAuthenticated": "request.auth != null",
+    "isAdmin": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+    "isManager": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager'"
+  }
+}
