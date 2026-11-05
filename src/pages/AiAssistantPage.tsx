@@ -1,5 +1,6 @@
+import DemoNotice from '../components/DemoNotice';
 import React, { useState, useRef, useEffect } from 'react';
-import { stellarProjects, portfolioMetadata } from '../data/stellarData';
+import { usePortfolio } from '../data/portfolioStore';
 import { availableAiModels, initialAiProviderAuths } from '../data/connectionsData';
 import { AiProviderId, AiModelOption, AiProviderAuth, ChatAttachment } from '../types';
 import * as XLSX from 'xlsx';
@@ -54,6 +55,7 @@ interface ChatMessage {
 }
 
 export default function AiAssistantPage() {
+  const { projects: stellarProjects, metadata: portfolioMetadata } = usePortfolio();
   // Provider Auth State
   const [providerAuths, setProviderAuths] = useState<Record<string, AiProviderAuth>>(() => {
     try {
@@ -551,6 +553,10 @@ Bạn có thể:
 
   return (
     <div className="flex flex-col h-[calc(100vh-6.5rem)] space-y-3 pb-2">
+      <DemoNotice>
+        Trợ lý trả lời qua <b>Gemini trên server</b> (cần GEMINI_API_KEY). Phần “đăng nhập” OpenAI/Claude trên trang này chỉ là giao diện
+        mẫu: mọi câu hỏi hiện đều được xử lý bằng Gemini.
+      </DemoNotice>
       {/* 1. TOP AI MODEL & AUTH HUB BAR */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-3">
         {/* Row 1: 3 Provider Buttons with Login status */}

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProjectById, stellarProjects, engineeringWorkstreams } from '../data/stellarData';
-import { StellarProject, Task } from '../types';
+import { usePortfolio, useDataStore } from '../data/portfolioStore';
+import MilestoneTable from '../components/MilestoneTable';
+import TaskBoard from '../components/TaskBoard';
 import { 
   Building2, 
   Calendar, 
@@ -23,43 +24,17 @@ import {
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const project = getProjectById(id || '') || stellarProjects[0];
+  const { projects, workstreams: engineeringWorkstreams, loading, metadata } = usePortfolio();
+  const metadataDate = metadata.lastSyncDate || '—';
+  const project = projects.find((p) => p.id === id);
+  const allTasks = useDataStore((s) => s.tasks);
   const [activeTab, setActiveTab] = useState<'specs' | 'milestones' | 'design' | 'tasks'>('specs');
-
-  // Interactive local task state for Kanban
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: 't1', projectId: project.id, title: 'Rà soát hồ sơ quy hoạch TMB và khớp nối HTKT', status: 'done', dueDate: Date.now(), assigneeId: 'KTS. Lê Nam', createdAt: Date.now(), updatedAt: Date.now() },
-    { id: 't2', projectId: project.id, title: 'Hoàn thiện hồ sơ báo cáo NCKT và bản vẽ PCCC', status: 'in-progress', dueDate: Date.now() + 86400000 * 5, assigneeId: 'KS. Hoàng Vũ', createdAt: Date.now(), updatedAt: Date.now() },
-    { id: 't3', projectId: project.id, title: 'Thẩm định hồ sơ thiết kế cơ sở và chỉ giới đường đỏ', status: 'todo', dueDate: Date.now() + 86400000 * 14, assigneeId: 'QLTK. Trần Hưng', createdAt: Date.now(), updatedAt: Date.now() },
-  ]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    const newTask: Task = {
-      id: 'task_' + Date.now(),
-      projectId: project.id,
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      dueDate: Date.now() + 86400000 * 7,
-      assigneeId: 'Team Thiết kế',
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    setTasks(prev => [...prev, newTask]);
-    setNewTaskTitle('');
-  };
-
-  const handleStatusChange = (taskId: string, newStatus: Task['status']) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-  };
 
   // Find engineering workstreams for this project
   const projectDesignNotes = useMemo(() => {
     const list: { taskName: string; taskCode: string; notes: string }[] = [];
     engineeringWorkstreams.forEach(ws => {
-      const note = ws.projectNotes.find(n => n.projectId === project.id);
+      const note = ws.projectNotes.find(n => n.projectId === id);
       if (note) {
         list.push({
           taskName: ws.name,
@@ -69,7 +44,17 @@ export default function ProjectDetail() {
       }
     });
     return list;
-  }, [project.id]);
+  }, [project?.id, engineeringWorkstreams]);
+
+  if (!project) {
+    return (
+      <div className="p-8 text-center text-sm text-slate-500">
+        {loading ? 'Đang tải dữ liệu...' : (
+          <>Không tìm thấy dự án "{id}". <Link to="/projects" className="text-indigo-600 font-semibold">Quay lại danh mục</Link></>
+        )}
+      </div>
+    );
+  }
 
   const completedMilestones = project.milestones.filter(m => m.status === 'Đã hoàn thành').length;
   const delayedMilestones = project.milestones.filter(m => m.status === 'Chậm tiến độ').length;
@@ -120,7 +105,7 @@ export default function ProjectDetail() {
               </h1>
               <p className="text-sm text-slate-300 flex items-center mt-2">
                 <MapPin size={14} className="mr-1.5 text-slate-400" />
-                {project.location} • Cột số {project.col} trong Sheet CHỈ TIÊU & TIẾN ĐỘ
+                {project.location}{project.ownerName ? ` • Phụ trách: ${project.ownerName}` : ''}
               </p>
             </div>
 
@@ -134,7 +119,7 @@ export default function ProjectDetail() {
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full" style={{ width: `${project.progress}%` }} />
               </div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
-                <span>{completedMilestones}/15 mốc xong</span>
+                <span>{completedMilestones}/{project.milestones.length} mốc xong</span>
                 {delayedMilestones > 0 ? (
                   <span className="text-amber-400 font-semibold">{delayedMilestones} mốc chậm</span>
                 ) : (
@@ -212,7 +197,7 @@ export default function ProjectDetail() {
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">Thông số Chỉ tiêu Kiến trúc & Quy hoạch Chi tiết</h3>
-                <p className="text-xs text-slate-500">Trích xuất trực tiếp từ Sheet CHỈ TIÊU (cột {project.col})</p>
+                <p className="text-xs text-slate-500">Trích từ sheet CHỈ TIÊU (Excel cập nhật {metadataDate})</p>
               </div>
               <span className="px-3 py-1 bg-slate-100 rounded-lg font-mono text-xs font-bold text-slate-700">
                 MÃ DA: {project.code}
@@ -356,97 +341,8 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* TAB 2: MILESTONES (15 Mốc Tiến độ) */}
-      {activeTab === 'milestones' && (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">Lộ trình 15 Mốc Pháp lý & Xây dựng</h3>
-              <p className="text-xs text-slate-500">So sánh ngày phê duyệt với ngày điều chỉnh Lần 1 (Sheet 26.2.26)</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
-                {completedMilestones}/15 Mốc hoàn thành
-              </span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100/60 text-slate-600 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4 w-12 text-center">TT</th>
-                  <th className="py-3 px-4 min-w-[200px]">Công việc / Mốc Pháp lý</th>
-                  <th className="py-3 px-3 min-w-[120px]">Phê duyệt</th>
-                  <th className="py-3 px-3 min-w-[140px]">Hiện tại (Lần 1)</th>
-                  <th className="py-3 px-3 min-w-[120px]">Đánh giá (tháng)</th>
-                  <th className="py-3 px-3 min-w-[110px]">Trạng thái</th>
-                  <th className="py-3 px-4 min-w-[260px]">Ghi chú thực địa / Nguyên nhân</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {project.milestones.map((m) => {
-                  const isDelayed = m.status === 'Chậm tiến độ' || (m.evaluationMonths !== null && m.evaluationMonths < 0);
-                  const isDone = m.status === 'Đã hoàn thành';
-
-                  return (
-                    <tr 
-                      key={m.index} 
-                      className={`hover:bg-slate-50/80 transition-colors ${
-                        isDelayed ? 'bg-amber-50/20' : (isDone ? 'bg-emerald-50/10' : '')
-                      }`}
-                    >
-                      <td className="py-3 px-4 text-center font-bold text-slate-400">
-                        {m.index}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-slate-900">
-                        <div>{m.title}</div>
-                        <span className="text-[10px] text-slate-400 font-normal">{m.category}</span>
-                      </td>
-                      <td className="py-3 px-3 text-slate-600 font-medium font-mono">
-                        {m.plannedDate || '—'}
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-slate-900 font-mono">
-                        {m.adjustedDate || '—'}
-                      </td>
-                      <td className="py-3 px-3">
-                        {m.evaluationMonths !== null ? (
-                          <span className={`inline-flex items-center font-bold font-mono px-2 py-0.5 rounded-full text-[11px] ${
-                            m.evaluationMonths < 0
-                              ? 'bg-red-50 text-red-700 border border-red-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}>
-                            {m.evaluationMonths < 0 ? (
-                              <TrendingDown size={11} className="mr-1 text-red-600" />
-                            ) : null}
-                            {m.evaluationMonths > 0 ? `+${m.evaluationMonths}` : m.evaluationMonths} tháng
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          isDone
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : isDelayed
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {m.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 text-xs italic">
-                        {m.notes || <span className="text-slate-300 not-italic">Đang triển khai đúng kế hoạch</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* TAB 2: MILESTONES (15 mốc tiến độ, sửa được) */}
+      {activeTab === 'milestones' && <MilestoneTable project={project} />}
 
       {/* TAB 3: DESIGN NOTES (Ghi chú Thiết kế & Các tuần) */}
       {activeTab === 'design' && (
@@ -485,113 +381,8 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* TAB 4: TASKS KANBAN */}
-      {activeTab === 'tasks' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Quản lý Công việc & Phối hợp Triển khai</h3>
-                <p className="text-xs text-slate-500">Phân công nhiệm vụ theo các mốc tiến độ của dự án</p>
-              </div>
-
-              {/* Add Task Form */}
-              <form onSubmit={handleAddTask} className="flex items-center space-x-2 w-full sm:w-auto">
-                <input
-                  type="text"
-                  placeholder="Thêm nhiệm vụ mới..."
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[240px]"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-1 shadow-sm transition-colors"
-                >
-                  <Plus size={14} />
-                  <span>Thêm</span>
-                </button>
-              </form>
-            </div>
-
-            {/* Kanban Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Todo Column */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center justify-between font-bold text-xs text-slate-700 mb-3">
-                  <span>CẦN LÀM (TODO)</span>
-                  <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px]">
-                    {tasks.filter(t => t.status === 'todo').length}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {tasks.filter(t => t.status === 'todo').map((task) => (
-                    <div key={task.id} className="bg-white p-3 rounded-lg border border-slate-200 text-xs shadow-xs space-y-2">
-                      <p className="font-medium text-slate-800">{task.title}</p>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span>{task.assigneeId}</span>
-                        <button
-                          onClick={() => handleStatusChange(task.id!, 'in-progress')}
-                          className="text-indigo-600 hover:underline font-medium"
-                        >
-                          Bắt đầu →
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* In Progress Column */}
-              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                <div className="flex items-center justify-between font-bold text-xs text-blue-900 mb-3">
-                  <span>ĐANG THỰC HIỆN</span>
-                  <span className="w-5 h-5 rounded-full bg-blue-200 text-blue-800 flex items-center justify-center text-[10px]">
-                    {tasks.filter(t => t.status === 'in-progress').length}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {tasks.filter(t => t.status === 'in-progress').map((task) => (
-                    <div key={task.id} className="bg-white p-3 rounded-lg border border-blue-200 text-xs shadow-xs space-y-2">
-                      <p className="font-medium text-slate-800">{task.title}</p>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span>{task.assigneeId}</span>
-                        <button
-                          onClick={() => handleStatusChange(task.id!, 'done')}
-                          className="text-emerald-600 hover:underline font-medium"
-                        >
-                          Hoàn thành ✓
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Done Column */}
-              <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
-                <div className="flex items-center justify-between font-bold text-xs text-emerald-900 mb-3">
-                  <span>HOÀN THÀNH</span>
-                  <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-[10px]">
-                    {tasks.filter(t => t.status === 'done').length}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {tasks.filter(t => t.status === 'done').map((task) => (
-                    <div key={task.id} className="bg-white p-3 rounded-lg border border-emerald-200 text-xs shadow-xs space-y-2">
-                      <p className="font-medium text-slate-800 line-through text-slate-500">{task.title}</p>
-                      <div className="flex items-center justify-between text-[11px] text-emerald-600 font-semibold">
-                        <span>✓ Đã xong</span>
-                        <span className="text-slate-400 font-normal">{task.assigneeId}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* TAB 4: TASKS KANBAN (lưu Firestore) */}
+      {activeTab === 'tasks' && <TaskBoard project={project} />}
     </div>
   );
 }

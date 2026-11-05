@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { stellarProjects, MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { usePortfolio, isMilestoneOverdue } from '../data/portfolioStore';
 import { StellarProject } from '../types';
 import { 
   Calendar, 
@@ -17,6 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function MasterSchedule() {
+  const { projects: stellarProjects } = usePortfolio();
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [selectedMilestone, setSelectedMilestone] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,7 +34,7 @@ export default function MasterSchedule() {
         p.location.toLowerCase().includes(searchQuery.toLowerCase());
       return matchGroup && matchSearch;
     });
-  }, [selectedGroup, searchQuery]);
+  }, [stellarProjects, selectedGroup, searchQuery]);
 
   // Calculate statistics across all milestones in view
   const stats = useMemo(() => {
@@ -74,7 +76,7 @@ export default function MasterSchedule() {
           <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             <div className="flex items-center space-x-2">
               <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center">
-                <FileSpreadsheet size={13} className="mr-1.5" /> Nguồn dữ liệu SharePoint: 26.2.26 & TIẾN ĐỘ
+                <FileSpreadsheet size={13} className="mr-1.5" /> Nguồn: sheet tiến độ 15 mốc trong Excel
               </span>
               <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-medium">
                 Cập nhật 26/02/2026
@@ -191,6 +193,9 @@ export default function MasterSchedule() {
             </span>
             <span className="flex items-center text-amber-700">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-1.5 inline-block" /> Chậm trễ / Đánh giá âm
+            </span>
+            <span className="flex items-center text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-300 mr-1.5 inline-block" /> Chưa có dữ liệu
             </span>
           </div>
         </div>
@@ -311,9 +316,12 @@ export default function MasterSchedule() {
                             }`}>
                               {m.status}
                             </span>
+                            {isMilestoneOverdue(m) && (
+                              <span className="block mt-1 text-[10px] font-semibold text-rose-700">Quá ngày, chưa ghi nhận hoàn thành</span>
+                            )}
                           </td>
                           <td className="py-2.5 px-4 text-slate-600 text-xs italic">
-                            {m.notes || <span className="text-slate-300 not-italic">Đang triển khai đúng kế hoạch</span>}
+                            {m.notes || <span className="text-slate-300 not-italic">—</span>}
                           </td>
                         </tr>
                       );

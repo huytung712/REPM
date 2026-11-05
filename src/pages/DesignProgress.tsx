@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { engineeringWorkstreams, stellarProjects } from '../data/stellarData';
+import { usePortfolio } from '../data/portfolioStore';
 import { 
   Compass, 
   Search, 
@@ -17,6 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function DesignProgress() {
+  const { projects: stellarProjects, workstreams: engineeringWorkstreams } = usePortfolio();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
@@ -43,7 +44,7 @@ export default function DesignProgress() {
       }
       return { ...item, category };
     });
-  }, []);
+  }, [engineeringWorkstreams]);
 
   const categories = [
     { id: 'all', label: 'Tất cả hạng mục', count: categorizedWorkstreams.length },

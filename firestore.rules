@@ -1,33 +1,104 @@
 rules_version = '2';
+
+// Phân quyền theo vai trò (role-based) — mẫu tham khảo:
+// https://firebase.google.com/docs/firestore/solutions/role-based-access
+//
+//   viewer  : chỉ xem
+//   manager : xem + cập nhật dự án, mốc tiến độ, công việc, tài liệu
+//   admin   : toàn quyền + quản lý người dùng + nhập dữ liệu Excel
+//
+// Tài khoản quản trị khởi tạo (bootstrap) được xác định bằng email đã xác minh.
+// Đổi email ở hàm isBootstrapAdmin() nếu cần.
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helpers
-    function isAuthenticated() {
-      return true;
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isBootstrapAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'huytung712@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function role() {
+      return hasProfile() ? userDoc().data.role : 'none';
     }
     function isAdmin() {
-      return true;
+      return isBootstrapAdmin() || role() == 'admin';
     }
     function isManager() {
-      return true;
+      return isAdmin() || role() == 'manager';
+    }
+    function isViewer() {
+      return isManager() || role() == 'viewer';
+    }
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    match /users/{userId} {
-      allow read, write: if true;
+    // Hồ sơ người dùng
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // Người dùng mới tự tạo hồ sơ với vai trò 'viewer' (hoặc 'admin' nếu là bootstrap admin)
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && (request.resource.data.role == 'viewer'
+            || (request.resource.data.role == 'admin' && isBootstrapAdmin()));
+      // Người dùng chỉ được sửa tên hiển thị của mình; admin sửa được vai trò
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid && onlyChanges(['displayName', 'lastLoginAt', 'photoURL']));
+      allow delete: if isAdmin();
     }
 
+    // Dự án (kèm 15 mốc tiến độ nhúng trong document)
     match /projects/{projectId} {
-      allow read, write: if true;
+      allow read: if isViewer();
+      allow create, delete: if isAdmin();
+      allow update: if isManager();
     }
 
+    // Hạng mục thiết kế / kỹ thuật (từ sheet TỔNG HỢP TIẾN ĐỘ)
+    match /workstreams/{id} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // Công việc (Kanban)
     match /tasks/{taskId} {
-      allow read, write: if true;
+      allow read: if isViewer();
+      allow create, update: if isManager();
+      allow delete: if isManager();
     }
 
+    // Tài liệu: chỉ lưu metadata + liên kết SharePoint/OneDrive/Drive (tệp gốc nằm ở kho của công ty)
     match /documents/{documentId} {
-      allow read, write: if true;
+      allow read: if isViewer();
+      allow create, update, delete: if isManager();
+    }
+
+    // Nhật ký thay đổi — chỉ ghi thêm, không sửa/xoá
+    match /activity/{id} {
+      allow read: if isViewer();
+      allow create: if isManager() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Metadata danh mục (lần nhập Excel gần nhất, ...)
+    match /meta/{id} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // Dữ liệu tiếp nhận (Data Intake)
+    match /intake/{id} {
+      allow read: if isViewer();
+      allow write: if isManager();
     }
   }
 }
-

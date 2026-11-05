@@ -6,15 +6,19 @@ export interface User {
   displayName: string;
   role: Role;
   createdAt: number;
+  lastLoginAt?: number;
 }
 
 export interface ProjectBlock {
   name: string;
+  far?: string;
+  towerAreaPerFloor?: string;
+  podiumAreaPerFloor?: string;
   constructionArea?: string;
   density?: string;
   floors?: string;
-  units?: number;
-  population?: number;
+  units?: number | string;
+  population?: number | string;
   towerGfa?: string;
   gfa?: string;
 }
@@ -41,6 +45,30 @@ export interface ProjectSpecs {
   blocks: ProjectBlock[];
 }
 
+export type MilestoneStatus =
+  | 'Đã hoàn thành'
+  | 'Đúng tiến độ'
+  | 'Chậm tiến độ'
+  | 'Đang thực hiện'
+  | 'Sắp tới'
+  | 'Chưa có dữ liệu';
+
+export const MILESTONE_STATUSES: MilestoneStatus[] = [
+  'Chưa có dữ liệu',
+  'Sắp tới',
+  'Đang thực hiện',
+  'Đúng tiến độ',
+  'Chậm tiến độ',
+  'Đã hoàn thành',
+];
+
+export interface MilestoneSubItem {
+  title: string;
+  plannedDate: string;
+  adjustedDate: string;
+  notes: string;
+}
+
 export interface ProjectMilestone {
   index: number;
   title: string;
@@ -49,7 +77,13 @@ export interface ProjectMilestone {
   adjustedDate: string;
   evaluationMonths: number | null;
   notes: string;
-  status: 'Đã hoàn thành' | 'Đúng tiến độ' | 'Chậm tiến độ' | 'Đang thực hiện' | 'Sắp tới';
+  status: MilestoneStatus;
+  /** Hạng mục con (mốc 8: cọc/ngầm/thân; mốc 12: thông báo khởi công từng phần) */
+  subItems?: MilestoneSubItem[];
+  /** Ngày thực tế hoàn thành (nhập tay) */
+  actualDate?: string;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface StellarProject {
@@ -60,10 +94,14 @@ export interface StellarProject {
   location: string;
   status: string;
   progress: number;
-  col: number;
+  col?: number;
   specs: ProjectSpecs;
   milestones: ProjectMilestone[];
   description?: string;
+  /** Chủ nhiệm / phụ trách dự án */
+  ownerName?: string;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface EngineeringProjectNote {
@@ -75,6 +113,7 @@ export interface EngineeringProjectNote {
 export interface EngineeringWorkstream {
   id: string;
   code: string;
+  section?: string;
   name: string;
   projectNotes: EngineeringProjectNote[];
 }
@@ -95,7 +134,18 @@ export interface PortfolioMetadata {
     totalUnits: number;
     totalPopulation: number;
     onTrackMilestonesPercent: number;
+    /** Số dự án/mốc có dữ liệu được đưa vào phép tính */
+    coverage?: {
+      landArea: number;
+      totalUnits: number;
+      totalPopulation: number;
+      milestonesWithData: number;
+      milestonesTotal: number;
+    };
   };
+  milestoneSheets?: string[];
+  importedBy?: string;
+  importedAt?: number;
 }
 
 export interface StellarPortfolioData {
@@ -120,25 +170,54 @@ export interface Project {
   updatedAt: number;
 }
 
+export type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done';
+export type TaskPriority = 'high' | 'medium' | 'low';
+
 export interface Task {
   id?: string;
   projectId: string;
   title: string;
-  status: 'todo' | 'in-progress' | 'review' | 'done';
-  dueDate: number;
+  description?: string;
+  status: TaskStatus;
+  priority?: TaskPriority;
+  /** Hạn hoàn thành (epoch ms); null nếu chưa đặt */
+  dueDate: number | null;
+  /** Tên người phụ trách (nhập tự do) */
   assigneeId: string;
+  /** Liên kết với mốc tiến độ 1–15 (nếu có) */
+  milestoneIndex?: number | null;
+  /** Thứ tự trong cột Kanban */
+  order?: number;
   createdAt: number;
+  createdBy?: string;
   updatedAt: number;
+  updatedBy?: string;
 }
 
 export interface Document {
   id?: string;
   projectId: string;
   name: string;
+  /** Liên kết SharePoint / OneDrive / Google Drive tới tệp gốc */
   url: string;
+  category: string;
+  milestoneIndex?: number | null;
+  version?: string;
+  notes?: string;
   uploadedBy: string;
   uploadedAt: number;
   type: string;
+}
+
+export interface ActivityLog {
+  id?: string;
+  at: number;
+  actorUid: string;
+  actorName: string;
+  projectId?: string;
+  entity: 'project' | 'milestone' | 'task' | 'document' | 'import' | 'user';
+  action: string;
+  detail?: string;
 }
 
 export type ServiceConnectionId = 'zalo' | 'telegram' | 'microsoft' | 'google' | 'gmail' | 'notebooklm' | 'onedrive' | 'teams';
