@@ -1,3 +1,4 @@
+import DemoNotice from '../components/DemoNotice';
 import React, { useState, useRef } from 'react';
 import { 
   UploadCloud, 
@@ -31,10 +32,12 @@ import {
 } from 'lucide-react';
 import { initialDataIntakeItems, INTEGRATED_SYSTEM_TAGS } from '../data/dataIntakeData';
 import { DataIntakeItem, DataIntakeTag, DataIntakeStatus } from '../types';
-import { stellarProjects, MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { usePortfolio } from '../data/portfolioStore';
 import { analyzeIncomingData } from '../utils/aiIntakeAnalyzer';
 
 export default function DataSourcesPage() {
+  const { projects: stellarProjects } = usePortfolio();
   const [items, setItems] = useState<DataIntakeItem[]>(() => {
     try {
       const saved = localStorage.getItem('stellar_data_intake_items');
@@ -329,6 +332,11 @@ export default function DataSourcesPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      <DemoNotice>
+        <b>Bản thử nghiệm.</b> Dữ liệu tiếp nhận trên trang này chỉ lưu trong trình duyệt của bạn (localStorage), chưa đồng bộ cho người
+        khác và chưa cập nhật vào dự án. Phân loại AI cần GEMINI_API_KEY trên server. Để cập nhật số liệu chính thức, dùng mục
+        <b> Nhập dữ liệu Excel</b>.
+      </DemoNotice>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">

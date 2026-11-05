@@ -15,9 +15,63 @@ import {
   ExternalLink,
   Layers,
   Share2,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  History,
+  Database
 } from 'lucide-react';
-import { useStore } from '@/store';
+import { useStore, isAdmin } from '@/store';
+import { usePortfolio, seedFromBundledData } from '@/data/portfolioStore';
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Quản trị viên',
+  manager: 'Quản lý (được sửa)',
+  viewer: 'Chỉ xem',
+};
+
+function DataSourceBanner() {
+  const { source, error, metadata } = usePortfolio();
+  const user = useStore((s) => s.user);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  if (error) {
+    return (
+      <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700">
+        {error}. Kiểm tra quyền truy cập Firestore (firestore.rules) và vai trò tài khoản.
+      </div>
+    );
+  }
+  if (source !== 'seed') return null;
+  return (
+    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+      <span>
+        <b>Firestore chưa có dữ liệu.</b> Đang hiển thị dữ liệu khởi tạo (chỉ đọc) trích từ Excel ngày{' '}
+        {metadata.lastSyncDate || '—'}. Mọi chỉnh sửa cần khởi tạo dữ liệu trước.
+        {msg && <span className="block mt-1 text-rose-700">{msg}</span>}
+      </span>
+      {isAdmin(user) && (
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setMsg('');
+            try {
+              await seedFromBundledData();
+            } catch (e: any) {
+              setMsg('Lỗi: ' + (e?.code || e?.message));
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700 disabled:opacity-60"
+        >
+          <Database size={13} /> {busy ? 'Đang ghi...' : 'Khởi tạo dữ liệu lên Firestore'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -42,23 +96,26 @@ export default function Layout() {
       items: [
         { name: 'Ma trận 15 Mốc Pháp lý', path: '/master-schedule', icon: Calendar },
         { name: 'Tiến độ Thiết kế & Kỹ thuật', path: '/design-progress', icon: Compass },
+        { name: 'Nhập dữ liệu Excel', path: '/import', icon: Upload },
         { name: 'Nguồn Dữ Liệu (Data Intake)', path: '/data-sources', icon: Layers },
       ]
     },
     {
       title: 'Tiện ích & Hệ thống',
       items: [
-        { name: 'KẾT NỐI (Teams, OneDrive, Zalo...)', path: '/connections', icon: Share2 },
-        { name: 'Tài liệu & Hồ sơ Cloud', path: '/documents', icon: FileText },
+        { name: 'Tài liệu & Hồ sơ', path: '/documents', icon: FileText },
+        { name: 'Nhật ký thay đổi', path: '/activity', icon: History },
+        { name: 'Kết nối (bản demo)', path: '/connections', icon: Share2 },
         { name: 'Trợ lý AI BĐS Stellar', path: '/ai-assistant', icon: Bot },
         { name: 'Cài đặt & Phân quyền', path: '/settings', icon: Settings },
       ]
     }
   ];
 
-  const displayName = user?.displayName || 'Huy Tùng';
-  const email = user?.email || 'huytung712@gmail.com';
-  const roleLabel = user?.role === 'admin' || user?.email === 'huytung712@gmail.com' ? 'Quản trị viên (Admin)' : (user?.role || 'User');
+  const { metadata } = usePortfolio();
+  const displayName = user?.displayName || user?.email || '';
+  const email = user?.email || '';
+  const roleLabel = ROLE_LABELS[user?.role || ''] || 'Chưa phân quyền';
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans select-none overflow-hidden">
@@ -124,15 +181,16 @@ export default function Layout() {
           <div className="p-3 bg-slate-800/60 border border-slate-800 rounded-xl space-y-1.5 text-xs text-slate-400">
             <div className="flex items-center justify-between text-[11px] text-indigo-400 font-bold">
               <span className="flex items-center"><Layers size={12} className="mr-1" /> Nguồn dữ liệu</span>
-              <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded text-[9px]">LIVE</span>
             </div>
-            <p className="text-[11px] text-slate-300">SharePoint Excel: 23 Dự án, 10 Bảng tính</p>
+            <p className="text-[11px] text-slate-300">
+              Excel cập nhật {metadata.lastSyncDate || '—'} · {metadata.totalProjects} dự án
+            </p>
             <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
               <NavLink
-                to="/data-sources"
+                to="/import"
                 className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center"
               >
-                <span>Cổng nạp dữ liệu AI</span>
+                <span>Nhập Excel mới</span>
                 <ArrowRight size={10} className="ml-1" />
               </NavLink>
               <a 
@@ -184,7 +242,7 @@ export default function Layout() {
           
           <div className="flex-1">
             <p className="text-xs text-slate-600 hidden sm:block">
-              Xin chào Quản trị viên <span className="font-bold text-slate-900">{displayName}</span> 👋 ({email})
+              Xin chào <span className="font-bold text-slate-900">{displayName}</span> ({email})
             </p>
           </div>
           
@@ -209,17 +267,18 @@ export default function Layout() {
         </header>
         
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col min-h-0 bg-slate-50">
+          <DataSourceBanner />
           <Outlet />
         </main>
         
         <footer className="h-8 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[10px] text-slate-400 shrink-0">
           <div className="flex space-x-4">
-            <span>Dữ liệu: Stellar SharePoint</span>
+            <span>Dữ liệu: Excel {metadata.lastSyncDate || '—'}</span>
             <span className="text-indigo-600 font-semibold">Tài khoản: {email}</span>
           </div>
           <div className="flex items-center space-x-1">
             <ShieldCheck size={11} className="text-emerald-500" />
-            <span className="text-slate-600 font-medium">Toàn quyền Quản trị viên (Admin)</span>
+            <span className="text-slate-600 font-medium">{roleLabel}</span>
           </div>
         </footer>
       </div>

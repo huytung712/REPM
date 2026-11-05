@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/store';
 import { X, Send, Bot, Mic, MicOff, Volume2, VolumeX, Sparkles, Paperclip } from 'lucide-react';
-import { stellarProjects, portfolioMetadata } from '@/data/stellarData';
+import { usePortfolio } from '@/data/portfolioStore';
 
 export default function AiChatOverlay() {
+  const { projects: stellarProjects, metadata: portfolioMetadata } = usePortfolio();
   const { isAiChatOpen, toggleAiChat } = useStore();
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
     { 
       role: 'assistant', 
-      content: 'Xin chào! Tôi là Trợ lý AI BĐS Stellar, đồng bộ với dữ liệu 23 dự án SharePoint. Bạn cần tra cứu chỉ tiêu quy hoạch hay tiến độ 15 mốc nào?' 
+      content: 'Xin chào! Tôi là Trợ lý AI BĐS Stellar, đồng bộ với danh mục dự án trong hệ thống. Bạn cần tra cứu chỉ tiêu quy hoạch hay tiến độ 15 mốc nào?' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -271,7 +272,7 @@ export default function AiChatOverlay() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={isListening ? 'Đang lắng nghe...' : 'Hỏi chỉ tiêu, tiến độ 23 dự án...'}
+            placeholder={isListening ? 'Đang lắng nghe...' : 'Hỏi chỉ tiêu, tiến độ dự án...'}
             className="flex-1 bg-transparent border-none focus:outline-none text-xs text-slate-800 placeholder-slate-400"
           />
 

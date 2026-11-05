@@ -1,3 +1,4 @@
+import DemoNotice from '../components/DemoNotice';
 import React, { useState, useEffect } from 'react';
 import { 
   Share2, 
@@ -228,6 +229,10 @@ export default function ConnectionsPage() {
 
   return (
     <div className="space-y-6 pb-12">
+      <DemoNotice>
+        <b>Bản demo – chưa kết nối thật.</b> Các nút đăng nhập/đồng bộ Zalo, Telegram, Microsoft 365, Google, NotebookLM trên trang này chỉ
+        mô phỏng giao diện, không gửi hay nhận dữ liệu. Mỗi tích hợp cần tài khoản ứng dụng (API key/OAuth) của công ty để triển khai.
+      </DemoNotice>
       {/* Toast */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-medium flex items-center space-x-2 animate-in fade-in slide-in-from-top duration-200">

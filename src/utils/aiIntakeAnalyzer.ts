@@ -1,5 +1,8 @@
 import { DataIntakeItem, DataIntakeTag } from '../types';
-import { stellarProjects, MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { MILESTONE_DEFINITIONS } from '../data/stellarData';
+import { useDataStore } from '../data/portfolioStore';
+
+const getProjects = () => useDataStore.getState().projects;
 import { INTEGRATED_SYSTEM_TAGS } from '../data/dataIntakeData';
 
 export async function analyzeIncomingData(params: {
@@ -40,7 +43,7 @@ export async function analyzeIncomingData(params: {
       const data = await res.json();
       if (data.success && data.analysis) {
         const ai = data.analysis;
-        const matchedProject = stellarProjects.find(p => p.id === ai.suggestedProjectId) || stellarProjects[0];
+        const matchedProject = getProjects().find(p => p.id === ai.suggestedProjectId) || getProjects()[0];
         
         const suggestedTags: DataIntakeTag[] = (ai.suggestedTags || []).map((t: any, idx: number) => ({
           id: `tag-ai-${Date.now()}-${idx}`,
@@ -92,10 +95,10 @@ export async function analyzeIncomingData(params: {
   const fullText = `${title} ${fileName || ''} ${sourceUrl || ''} ${contentSnippet || ''}`.toLowerCase();
 
   // 1. Identify Project from 23 Stellar Projects
-  let matchedProject = stellarProjects[0]; // default Lai Yen
+  let matchedProject = getProjects()[0];
   let highestProjectScore = 0;
 
-  for (const proj of stellarProjects) {
+  for (const proj of getProjects()) {
     let score = 0;
     const pName = proj.name.toLowerCase();
     const pCode = proj.code.toLowerCase();

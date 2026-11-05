@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { stellarProjects } from '../data/stellarData';
+import { usePortfolio } from '../data/portfolioStore';
 import { StellarProject } from '../types';
 import { 
   Building, 
@@ -21,6 +21,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function Projects() {
+  const { projects: stellarProjects } = usePortfolio();
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'matrix'>('cards');
@@ -43,7 +44,7 @@ export default function Projects() {
         p.status.toLowerCase().includes(searchQuery.toLowerCase());
       return matchGroup && matchSearch;
     });
-  }, [selectedGroup, searchQuery]);
+  }, [stellarProjects, selectedGroup, searchQuery]);
 
   return (
     <div className="space-y-6 pb-12">
