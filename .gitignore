@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Secrets / session files
+cookies.txt
+*.cookies
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

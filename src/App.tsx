@@ -18,15 +18,23 @@ import AiAssistantPage from './pages/AiAssistantPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import DataSourcesPage from './pages/DataSourcesPage';
 import AiChatOverlay from './components/AiChatOverlay';
-import { auth } from './lib/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { useStore } from './store';
+import ImportExcelPage from './pages/ImportExcelPage';
+import ActivityPage from './pages/ActivityPage';
+import { useStore, initAuthListener } from './store';
+import { startDataSync, stopDataSync } from './data/portfolioStore';
+
+initAuthListener();
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const [firebaseUser, loading] = useAuthState(auth);
-  const storeUser = useStore((state) => state.user);
-  
-  if (loading && !storeUser) {
+  const user = useStore((state) => state.user);
+  const authLoading = useStore((state) => state.authLoading);
+
+  React.useEffect(() => {
+    if (user) startDataSync();
+    return () => stopDataSync();
+  }, [user?.uid]);
+
+  if (authLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center space-y-4">
@@ -37,8 +45,12 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const isAuthenticated = Boolean(storeUser || firebaseUser);
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function AuthedOnly({ children }: { children: React.ReactNode }) {
+  const user = useStore((state) => state.user);
+  return user ? <>{children}</> : null;
 }
 
 export default function App() {
@@ -57,10 +69,12 @@ export default function App() {
           <Route path="documents" element={<Documents />} />
           <Route path="connections" element={<ConnectionsPage />} />
           <Route path="ai-assistant" element={<AiAssistantPage />} />
+          <Route path="import" element={<ImportExcelPage />} />
+          <Route path="activity" element={<ActivityPage />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
-      <AiChatOverlay />
+      <AuthedOnly><AiChatOverlay /></AuthedOnly>
     </Router>
   );
 }
